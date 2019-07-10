@@ -1,7 +1,5 @@
 <?php
-
 /**
- *
  * Licence: MIT License (MIT)
  * Copyright (c) 2019 Joseph Block
  *
@@ -124,13 +122,13 @@ class rocksOauth {
 		}
 
 		$fields = array(
-			'grant_type'    => 'authorization_code',
-			'code'          => $this->code,
-			'client_id'     => $this->client,
-			'redirect_uri'  => $this->redirect
+			'grant_type'   => 'authorization_code',
+			'code'         => $this->code,
+			'client_id'    => $this->client,
+			'redirect_uri' => $this->redirect
 		);
 		try {
-			$result          = $this->callPost( rocksOauth::ENDPOINT_TOKEN, $fields,"",$this->client.":".$this->secret );
+			$result          = $this->callPost( rocksOauth::ENDPOINT_TOKEN, $fields, "", $this->client . ":" . $this->secret );
 			$this->expiresIn = $result->{'expires_in'};
 			$this->setToken( $result->{'access_token'} );
 			$this->setRefreshToken( $result->{'refresh_token'} );
@@ -195,31 +193,30 @@ class rocksOauth {
 	 * @return mixed
 	 * @throws Exception
 	 */
-	public function callPost( $url, $parms, $fields_string = "",$basicAuth = null, $contentType = "application/x-www-form-urlencoded" ) {
-		if( ! $this->token && !( $url == rocksOauth::ENDPOINT_AUTH || $url == rocksOauth::ENDPOINT_TOKEN ) ) {
+	public function callPost( $url, $parms, $fields_string = "", $basicAuth = null, $contentType = "application/x-www-form-urlencoded" ) {
+		if( ! $this->token && ! ( $url == rocksOauth::ENDPOINT_AUTH || $url == rocksOauth::ENDPOINT_TOKEN ) ) {
 			throw new Exception( "No token" );
 		}
 		$ch = $this->ch;
 		foreach( $parms as $key => $value ) {
 			$fields_string .= $key . '=' . $value . '&';
 		}
-		$headers = array('Content-Type: ' . $contentType);
-		if(!($url == rocksOauth::ENDPOINT_AUTH || $url == rocksOauth::ENDPOINT_TOKEN)){
-			$headers[]="Authorization: Bearer " . $this->token;
+		$headers = array( 'Content-Type: ' . $contentType );
+		if( ! ( $url == rocksOauth::ENDPOINT_AUTH || $url == rocksOauth::ENDPOINT_TOKEN ) ) {
+			$headers[] = "Authorization: Bearer " . $this->token;
 		}
 		$fields_string = rtrim( $fields_string, '&' );
 		curl_setopt( $ch, CURLOPT_URL, $this->root . $url );
 		curl_setopt( $ch, CURLOPT_HTTPHEADER, $headers );
 		curl_setopt( $ch, CURLOPT_POST, count( $parms ) );
-		if($basicAuth !=null){
-			curl_setopt($ch, CURLOPT_USERPWD, $basicAuth);
+		if( $basicAuth != null ) {
+			curl_setopt( $ch, CURLOPT_USERPWD, $basicAuth );
 		}
 		curl_setopt( $ch, CURLOPT_POSTFIELDS, $fields_string );
 		$response_body = curl_exec( $ch );
 		if( curl_error( $ch ) ) {
 			throw new Exception( "API call to $url failed: " . curl_error( $ch ) );
 		}
-		var_dump($ch);
 		echo $response_body;
 		$result = json_decode( $response_body );
 		if( isset( $result->{'error'} ) ) {
@@ -357,7 +354,7 @@ class rocksOauth {
 			if( $result->{'status'} === "unauthorized" ) {
 				throw new Exception( $result->{'message'} );
 			} else {
-				return $result;
+				return new RSVP( $result );
 			}
 		} catch ( Exception $e ) {
 			throw $e;
@@ -410,7 +407,10 @@ class rocksOauth {
 		}
 		$ch = $this->ch;
 		curl_setopt( $ch, CURLOPT_URL, $this->root . $url );
-		curl_setopt( $ch, CURLOPT_HTTPHEADER, array( 'Content-Type: ' . $contentType, "Authorization: Bearer " . $this->token ) );
+		curl_setopt( $ch, CURLOPT_HTTPHEADER, array(
+			'Content-Type: ' . $contentType,
+			"Authorization: Bearer " . $this->token
+		) );
 		curl_setopt( $ch, CURLOPT_CUSTOMREQUEST, "GET" );
 		$response_body = curl_exec( $ch );
 		if( curl_error( $ch ) ) {
@@ -629,5 +629,41 @@ class TELEGRAM {
 	public function __construct( $json ) {
 		$this->name = $json->{'name'};
 		$this->tgid = $json->{'tgid'};
+	}
+}
+
+class RSVP {
+	public $city;
+	public $team;
+	public $roles;
+	public $series;
+
+	public function __construct( $json ) {
+		$this->city = $json->{'city'};
+		$this->team = $json->{'team'} != null ? new TEAM( $json->{'team'} ) : null;
+		$roles      = array();
+		foreach( $json->{'roles'} as $role ) {
+			$roles[] = $role;
+		}
+		$this->roles  = $roles;
+		$this->series = $json->{'series'};
+	}
+}
+
+class TEAM {
+	public $sopid;
+	public $leader;
+	public $name;
+
+	public function __construct( $json ) {
+		if( isset( $json->{'sopid'} ) ) {
+			$this->sopid = $json->{'sopid'};
+		}
+		if( isset( $json->{'leader'} ) ) {
+			$this->leader = $json->{'leader'};
+		}
+		if( isset( $json->{'name'} ) ) {
+			$this->name = $json->{'name'};
+		}
 	}
 }
